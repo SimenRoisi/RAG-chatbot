@@ -6,6 +6,7 @@ A specialized customer support chatbot for **SkyComfort Airlines** built with Fa
 
 ## ✨ Features
 
+- **Instant Access** - No authentication required, start chatting immediately
 - **Domain-Specific RAG** - Answers only airline-related questions using vector search
 - **Strict Guardrails** - Politely declines off-topic queries
 - **Professional UI** - Airline-themed chat interface with sky blue branding
@@ -76,12 +77,13 @@ docker-compose exec api python scripts/ingest_airline_data_manual.py
 This populates the vector database with SkyComfort Airlines support documents.
 
 ### 6. Start Chatting!
-Open http://localhost:8000 in your browser and start asking airline-related questions!
+Open http://localhost:8000 in your browser - the chat interface loads instantly, no login required!
 
 **Try asking:**
 - "What is the carry-on baggage weight limit?"
 - "How do I check in online?"
 - "Can I travel with a wheelchair?"
+- "What are the flight change fees?"
 
 ---
 
@@ -91,7 +93,7 @@ Open http://localhost:8000 in your browser and start asking airline-related ques
 ┌─────────────┐
 │   User UI   │ (Frontend: HTML/JS/Tailwind)
 └──────┬──────┘
-       │
+       │ Anonymous Access
        ▼
 ┌─────────────────────────────────────────┐
 │         FastAPI Backend                 │
@@ -108,9 +110,9 @@ Open http://localhost:8000 in your browser and start asking airline-related ques
        ▼
 ┌─────────────────────────────────────────┐
 │   PostgreSQL + pgvector                 │
-│   - Users & API keys                    │
 │   - Documents & chunks                  │
 │   - Vector embeddings (1536-dim)        │
+│   - Chat conversation history           │
 └─────────────────────────────────────────┘
 ```
 
@@ -199,10 +201,12 @@ All content is based on real airline policies (Norwegian Air) but anonymized to 
 
 ## 🔒 Security Notes
 
-- **API Keys**: Stored as SHA256 hashes in the database
+- **Anonymous Access**: No user authentication required - suitable for public support tools
 - **Environment Variables**: Never commit `.env` to version control
-- **Rate Limiting**: Consider adding rate limiting for production use
+- **Rate Limiting**: **Strongly recommended** for production to prevent abuse (e.g., 10 requests/minute per IP)
 - **CORS**: Configure appropriately for production deployment
+- **OpenAI Costs**: Monitor API usage as all users share the same OpenAI account
+
 
 ---
 

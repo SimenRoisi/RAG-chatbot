@@ -29,30 +29,18 @@
 
 <body class="bg-gradient-to-br from-sky-50 to-blue-100 h-screen flex flex-col items-center justify-center p-4">
 
-    <!-- Auth / Setup (Hidden by default if key exists) -->
-    <div id="auth-screen" class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
-        <h2 class="text-2xl font-bold mb-4 text-sky-900">✈️ Welcome to SkyComfort Airlines</h2>
-        <p class="text-slate-600 mb-4">Enter your email to start chatting with our support team.</p>
-        <input type="email" id="email-input" placeholder="user@example.com"
-            class="w-full p-3 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500">
-        <button onclick="createSession()"
-            class="w-full bg-sky-600 text-white p-3 rounded-lg hover:bg-sky-700 transition">Start Chatting</button>
-    </div>
+    <!-- Auth screen removed - instant access -->
 
     <!-- Chat Interface -->
     <div id="chat-screen"
-        class="hidden flex-col w-full max-w-2xl bg-white rounded-xl shadow-2xl h-[80vh] overflow-hidden">
+        class="flex flex-col w-full max-w-2xl bg-white rounded-xl shadow-2xl h-[80vh] overflow-hidden">
 
         <!-- Header -->
-        <div class="bg-gradient-to-r from-sky-700 to-blue-800 p-4 flex justify-between items-center text-white">
+        <div class="bg-gradient-to-r from-sky-700 to-blue-800 p-4 text-white">
             <h1 class="font-bold text-lg flex items-center gap-2">✈️ SkyComfort Airlines Support</h1>
-            <div class="flex items-center gap-2">
-                <button onclick="logout()" class="text-sm text-sky-200 hover:text-white px-3 py-1">Exit</button>
-            </div>
         </div>
 
-        <!-- Hidden File Input -->
-        <input type="file" id="file-upload" class="hidden" onchange="handleFileUpload(this)">
+
 
         <!-- Messages Area -->
         <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 chat-scroll bg-slate-50">
@@ -85,47 +73,7 @@
 
     <script>
         const BASE_URL = "";
-        let apiKey = localStorage.getItem("rag_api_key");
         let messages = [];
-
-        // Check auth on load
-        if (apiKey) {
-            showChat();
-        }
-
-        function showChat() {
-            document.getElementById("auth-screen").classList.add("hidden");
-            document.getElementById("chat-screen").classList.remove("hidden");
-            document.getElementById("chat-screen").classList.add("flex");
-        }
-
-        async function createSession() {
-            const email = document.getElementById("email-input").value;
-            if (!email) return alert("Please enter an email");
-
-            try {
-                const uniqueKey = "web_" + Date.now();
-                const res = await fetch(`${BASE_URL}/users`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ email: email, api_key: uniqueKey })
-                });
-
-                if (!res.ok) throw new Error(await res.text());
-                const data = await res.json();
-
-                apiKey = data.api_key;
-                localStorage.setItem("rag_api_key", apiKey);
-                showChat();
-            } catch (e) {
-                alert("Login Failed: " + e.message);
-            }
-        }
-
-        function logout() {
-            localStorage.removeItem("rag_api_key");
-            location.reload();
-        }
 
         function appendMessage(role, text) {
             const container = document.getElementById("chat-messages");
@@ -166,8 +114,7 @@
                 const res = await fetch(`${BASE_URL}/assist`, {
                     method: "POST",
                     headers: {
-                        "Content-Type": "application/json",
-                        "X-API-Key": apiKey
+                        "Content-Type": "application/json"
                     },
                     body: JSON.stringify({ messages: messages })
                 });
@@ -187,33 +134,7 @@
             }
         }
 
-        function triggerUpload() {
-            document.getElementById("file-upload").click();
-        }
 
-        async function handleFileUpload(input) {
-            const file = input.files[0];
-            if (!file) return;
-
-            const text = await file.text(); // Simple text read for now
-
-            try {
-                const res = await fetch(`${BASE_URL}/documents`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-API-Key": apiKey
-                    },
-                    body: JSON.stringify({ title: file.name, content: text })
-                });
-
-                if (!res.ok) throw new Error(await res.text());
-                alert("File uploaded and ingested successfully!");
-            } catch (e) {
-                alert("Upload failed: " + e.message);
-            }
-            input.value = ""; // Reset
-        }
     </script>
 </body>
 

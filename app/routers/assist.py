@@ -17,7 +17,6 @@ router = APIRouter(prefix="/assist", tags=["assist"])
 async def assist(
         body: AssistRequest,
         session: AsyncSession = Depends(get_session),
-        api_key: str = Depends(require_api_key),
 ):
     """
     RAG-enabled LLM proxy with memory.
@@ -80,11 +79,5 @@ async def assist(
         # Catch-all so you see a useful message
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}") from e
     
-    # Explicitly log usage
-    hashed_key = get_key_hash(api_key)
-    await session.execute(
-        text("INSERT INTO api_usage (api_key_hash, endpoint) VALUES (:k, :e)"),
-        {"k": hashed_key, "e": "/assist"},
-    )
-    await session.commit()
     return AssistResponse(reply=reply)
+
