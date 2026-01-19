@@ -9,10 +9,11 @@ from .config import settings
 DATABASE_URL = settings.DATABASE_URL
 
 kwargs = {}
-if os.getenv("TESTING") == "1":
-    kwargs["poolclass"] = NullPool  # avoid reusing connections across loops
+# Always use NullPool for serverless environments (Vercel, AWS Lambda, etc.)
+# This prevents "Device or resource busy" errors in serverless functions
+kwargs["poolclass"] = NullPool
 
-engine = create_async_engine(DATABASE_URL, echo=True, **kwargs)
+engine = create_async_engine(DATABASE_URL, echo=False, **kwargs)
 
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
