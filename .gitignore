@@ -26,3 +26,12 @@ docker-compose.override.yml
 pgdata/
 *.log
 *.sqlite3
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+*.db
+
+# Gemini/Antigravity artifacts (local only)
+.gemini/

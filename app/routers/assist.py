@@ -6,7 +6,7 @@ from openai import APIError, OpenAIError
 from ..db import get_session
 from ..schemas import AssistRequest, AssistResponse
 from ..dependencies import require_api_key
-from ..llm import chat_once, get_embedding
+from ..llm import chat_once, get_embedding, contextualize_query, get_openai
 from ..config import settings
 from ..security import get_key_hash
 from ..models import DocumentChunk
@@ -20,17 +20,24 @@ async def assist(
         api_key: str = Depends(require_api_key),
 ):
     """
-    RAG-enabled LLM proxy.
+    RAG-enabled LLM proxy with memory.
     """
     
     # Use centralized config for system prompt
     system_prompt = settings.SYSTEM_PROMPT
     
     try:
-        # 1. Get embedding for query
-        query_emb = await get_embedding(body.prompt)
+        # Convert Pydantic models to dicts for OpenAI
+        messages = [{"role": m.role, "content": m.content} for m in body.messages]
         
-        # 2. Search for relevant chunks
+        # 1. Contextualize query
+        # Rewrite the *search query* but keep the chat history for the final answer
+        standalone_query = await contextualize_query(messages, model=settings.OPENAI_MODEL)
+        
+        # 2. Get embedding for the STANDALONE query
+        query_emb = await get_embedding(standalone_query)
+        
+        # 3. Search for relevant chunks
         stmt = (
             select(DocumentChunk)
             .order_by(DocumentChunk.embedding.cosine_distance(query_emb))
@@ -40,13 +47,34 @@ async def assist(
         
         context_text = "\n\n".join([c.content for c in chunks])
         if context_text:
-            user_prompt = f"Context:\n{context_text}\n\nQuestion: {body.prompt}"
+            # Inject context into the system prompt or as a new system message
+            # Better strategy: Add a system message with context just before the user's latest input?
+            # Or append to the system prompt.
+            detailed_system_prompt = (
+                f"{system_prompt}\n\n"
+                f"Relevant Context:\n{context_text}"
+            )
         else:
-            user_prompt = body.prompt
+            detailed_system_prompt = system_prompt
 
-        reply = await chat_once(system_prompt, user_prompt, model=settings.OPENAI_MODEL)
+        # Call LLM with full history + context
+        client = get_openai()  # Direct client usage for full history support
+        
+        full_messages = [
+            {"role": "system", "content": detailed_system_prompt},
+            *messages
+        ]
+        
+        resp = client.chat.completions.create(
+            model=settings.OPENAI_MODEL,
+            messages=full_messages,
+            temperature=0.3,
+        )
+        reply = resp.choices[0].message.content.strip()
+
     except (APIError, OpenAIError) as e:
         # Surface a clean 502 instead of a 500
+
         raise HTTPException(status_code=502, detail=f"LLM call failed: {e}") from e
     except Exception as e:
         # Catch-all so you see a useful message

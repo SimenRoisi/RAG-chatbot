@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkyComfort Airlines Support</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .chat-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: #0EA5E9 transparent;
+        }
+
+        .chat-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chat-scroll::-webkit-scrollbar-thumb {
+            background-color: #0EA5E9;
+            border-radius: 20px;
+        }
+    </style>
+</head>
+
+<body class="bg-gradient-to-br from-sky-50 to-blue-100 h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- Auth / Setup (Hidden by default if key exists) -->
+    <div id="auth-screen" class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+        <h2 class="text-2xl font-bold mb-4 text-sky-900">✈️ Welcome to SkyComfort Airlines</h2>
+        <p class="text-slate-600 mb-4">Enter your email to start chatting with our support team.</p>
+        <input type="email" id="email-input" placeholder="user@example.com"
+            class="w-full p-3 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <button onclick="createSession()"
+            class="w-full bg-sky-600 text-white p-3 rounded-lg hover:bg-sky-700 transition">Start Chatting</button>
+    </div>
+
+    <!-- Chat Interface -->
+    <div id="chat-screen"
+        class="hidden flex-col w-full max-w-2xl bg-white rounded-xl shadow-2xl h-[80vh] overflow-hidden">
+
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-sky-700 to-blue-800 p-4 flex justify-between items-center text-white">
+            <h1 class="font-bold text-lg flex items-center gap-2">✈️ SkyComfort Airlines Support</h1>
+            <div class="flex items-center gap-2">
+                <button onclick="logout()" class="text-sm text-sky-200 hover:text-white px-3 py-1">Exit</button>
+            </div>
+        </div>
+
+        <!-- Hidden File Input -->
+        <input type="file" id="file-upload" class="hidden" onchange="handleFileUpload(this)">
+
+        <!-- Messages Area -->
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 chat-scroll bg-slate-50">
+            <!-- Messages go here -->
+            <div class="flex justify-start">
+                <div
+                    class="bg-white border-2 border-sky-200 text-slate-800 p-4 rounded-tr-xl rounded-br-xl rounded-bl-xl shadow-sm max-w-[80%]">
+                    <p class="font-semibold text-sky-700 mb-1">Welcome aboard! ✈️</p>
+                    <p>I'm here to help with questions about baggage, check-in, special assistance, flight changes, and
+                        more. How can I assist you today?</p>
+                    <p class="text-xs text-slate-500 mt-2 italic">Try asking: "What's the carry-on weight limit?" or
+                        "How do I check in online?"</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="p-4 bg-white border-t">
+            <form onsubmit="handleSend(event)" class="flex gap-2">
+                <input type="text" id="chat-input" placeholder="Ask about baggage, check-in, flights..."
+                    class="flex-1 p-3 border-2 border-sky-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    autocomplete="off">
+                <button type="submit"
+                    class="bg-sky-600 text-white px-6 rounded-lg hover:bg-sky-700 transition font-medium">
+                    Send
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = "";
+        let apiKey = localStorage.getItem("rag_api_key");
+        let messages = [];
+
+        // Check auth on load
+        if (apiKey) {
+            showChat();
+        }
+
+        function showChat() {
+            document.getElementById("auth-screen").classList.add("hidden");
+            document.getElementById("chat-screen").classList.remove("hidden");
+            document.getElementById("chat-screen").classList.add("flex");
+        }
+
+        async function createSession() {
+            const email = document.getElementById("email-input").value;
+            if (!email) return alert("Please enter an email");
+
+            try {
+                const uniqueKey = "web_" + Date.now();
+                const res = await fetch(`${BASE_URL}/users`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email: email, api_key: uniqueKey })
+                });
+
+                if (!res.ok) throw new Error(await res.text());
+                const data = await res.json();
+
+                apiKey = data.api_key;
+                localStorage.setItem("rag_api_key", apiKey);
+                showChat();
+            } catch (e) {
+                alert("Login Failed: " + e.message);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem("rag_api_key");
+            location.reload();
+        }
+
+        function appendMessage(role, text) {
+            const container = document.getElementById("chat-messages");
+            const div = document.createElement("div");
+            div.className = `flex ${role === "user" ? "justify-end" : "justify-start"}`;
+
+            const bubble = document.createElement("div");
+            bubble.className = role === "user"
+                ? "bg-sky-600 text-white p-3 rounded-tl-xl rounded-tr-xl rounded-bl-xl shadow-md max-w-[80%]"
+                : "bg-white border-2 border-sky-100 text-slate-800 p-3 rounded-tr-xl rounded-br-xl rounded-bl-xl shadow-sm max-w-[80%]";
+
+            bubble.innerText = text;
+            div.appendChild(bubble);
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function handleSend(e) {
+            e.preventDefault();
+            const input = document.getElementById("chat-input");
+            const text = input.value.trim();
+            if (!text) return;
+
+            // UI Update
+            appendMessage("user", text);
+            input.value = "";
+            messages.push({ role: "user", content: text });
+
+            // Loading state
+            const loadingDiv = document.createElement("div");
+            loadingDiv.id = "loading-bubble";
+            loadingDiv.className = "flex justify-start";
+            loadingDiv.innerHTML = '<div class="bg-gray-100 text-gray-500 p-3 rounded-xl text-sm italic">Thinking...</div>';
+            document.getElementById("chat-messages").appendChild(loadingDiv);
+            document.getElementById("chat-messages").scrollTop = document.getElementById("chat-messages").scrollHeight;
+
+            try {
+                const res = await fetch(`${BASE_URL}/assist`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-API-Key": apiKey
+                    },
+                    body: JSON.stringify({ messages: messages })
+                });
+
+                document.getElementById("loading-bubble").remove();
+
+                if (!res.ok) throw new Error(await res.text());
+                const data = await res.json();
+
+                const reply = data.reply;
+                appendMessage("assistant", reply);
+                messages.push({ role: "assistant", content: reply });
+
+            } catch (err) {
+                document.getElementById("loading-bubble").remove();
+                appendMessage("assistant", "Error: " + err.message);
+            }
+        }
+
+        function triggerUpload() {
+            document.getElementById("file-upload").click();
+        }
+
+        async function handleFileUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const text = await file.text(); // Simple text read for now
+
+            try {
+                const res = await fetch(`${BASE_URL}/documents`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-API-Key": apiKey
+                    },
+                    body: JSON.stringify({ title: file.name, content: text })
+                });
+
+                if (!res.ok) throw new Error(await res.text());
+                alert("File uploaded and ingested successfully!");
+            } catch (e) {
+                alert("Upload failed: " + e.message);
+            }
+            input.value = ""; // Reset
+        }
+    </script>
+</body>
+
+</html>

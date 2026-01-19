@@ -11,3 +11,6 @@ alembic
 passlib[bcrypt]
 pydantic-settings
 pgvector
+aiofiles
+beautifulsoup4
+requests

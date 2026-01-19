@@ -26,8 +26,13 @@ class UsageSummary(BaseModel):
     endpoint: str
     calls: int
 
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
 class AssistRequest(BaseModel):
-    prompt: str
+    messages: list[ChatMessage]
+
 
 class AssistResponse(BaseModel):
     reply: str
