@@ -22,8 +22,20 @@ class Settings(BaseSettings):
         "6. Do not make up information or policies that are not in the provided context.\n\n"
         "Remember: You represent SkyComfort Airlines. Stay on topic and provide accurate, helpful information."
     )
-    DATABASE_URL: str = "postgresql+asyncpg://app:devpass@db:5432/appdb"
+    
+    # Database configuration - individual components
+    DB_USER: str = "app"
+    DB_PASS: str = "devpass"
+    DB_HOST: str = "db"
+    DB_PORT: str = "5432"
+    DB_NAME: str = "appdb"
     
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    
+    @property
+    def DATABASE_URL(self) -> str:
+        """Construct DATABASE_URL from individual components"""
+        return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASS}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 
 settings = Settings()
+
